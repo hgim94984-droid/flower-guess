@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F6EEDF">
+<title>오늘의 꽃 조각 맞히기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8C%B8%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   1. 팔레트 — 자매 게임(가위바위보)과 같은 수채화 정원 톤
+   ========================================================================== */
+:root{
+  color-scheme: light;
+  --paper:#F6EEDF; --card:#FFFDF7; --ink:#453730; --ink-soft:#7A6653;
+  --line:#D9C6A8; --line-soft:#E7DAC3;
+  --rose:#E5788F; --rose-deep:#CC5C77; --rose-line:#B84C67; --sage:#8FA381;
+  --tile:#FBF3E4; --tile-edge:#D9C6A8; --tile-ink:#B79F82;
+  --font-disp:"Gowun Batang","Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",serif;
+  --font-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --hand-radius:26px 30px 24px 32px / 30px 24px 32px 26px;
+  /* 화면 높이에서 그림판 말고 나머지가 차지하는 높이(--over)를 뺀 전부를 그림판에 준다 */
+  --over: 450px;
+  --board: clamp(200px, min(86vw, calc(100vh - var(--over))), 620px);
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#221C28; --card:#30293A; --ink:#F2E7DE; --ink-soft:#B6A6B4;
+  --line:#4E4259; --line-soft:#443A50;
+  --rose:#E5788F; --rose-deep:#C4546F; --rose-line:#F0A0B4; --sage:#9DB58E;
+  --tile:#3A3145; --tile-edge:#5A4C66; --tile-ink:#8E7C9A;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font-body); color:var(--ink); background:var(--paper);
+  min-height:100dvh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(430px 380px at 10% 4%,  rgba(244,186,201,.58), transparent 68%),
+    radial-gradient(520px 430px at 92% 10%, rgba(214,200,238,.54), transparent 70%),
+    radial-gradient(560px 500px at 84% 92%, rgba(203,226,186,.58), transparent 70%),
+    radial-gradient(470px 430px at 6% 82%,  rgba(243,222,141,.44), transparent 70%);
+}
+:root[data-theme="dark"] body::before{
+  background:
+    radial-gradient(430px 380px at 10% 4%,  rgba(126,60,94,.46), transparent 68%),
+    radial-gradient(520px 430px at 92% 10%, rgba(74,66,136,.44), transparent 70%),
+    radial-gradient(560px 500px at 84% 92%, rgba(52,98,82,.40), transparent 70%),
+    radial-gradient(470px 430px at 6% 82%,  rgba(124,98,42,.30), transparent 70%);
+}
+
+/* ==========================================================================
+   2. 레이아웃 · 머리말
+   ========================================================================== */
+.page{ position:relative; z-index:1; width:100%; max-width:min(1040px,94vw); margin:0 auto;
+  padding:12px 18px calc(22px + env(safe-area-inset-bottom)); }
+.site-head{ text-align:center; padding:6px 0 0; position:relative }
+.bi{ display:block; height:auto; margin:0 auto 6px; width:clamp(110px, min(14vw, 12vh), 200px);
+  filter:drop-shadow(0 7px 14px rgba(150,90,60,.20)); }
+h1{
+  display:inline-block;
+  font-family:var(--font-disp); font-weight:700; line-height:1.16; letter-spacing:.02em;
+  font-size:clamp(1.5rem, min(4vw, 5vh), 2.5rem);
+  background:linear-gradient(transparent 62%, rgba(244,175,193,.95) 62% 90%, transparent 90%);
+  padding:0 .18em; white-space:nowrap;
+}
+:root[data-theme="dark"] h1{ background:linear-gradient(transparent 62%, rgba(196,84,111,.62) 62% 90%, transparent 90%) }
+.tools{ position:absolute; top:6px; right:0; display:flex; gap:8px }
+.icon-btn{
+  width:44px; height:44px; border-radius:50%;
+  background:var(--card); border:1.6px solid var(--line); color:var(--ink-soft);
+  font-size:1.05rem; line-height:1; display:grid; place-items:center; cursor:pointer; font-family:inherit;
+  transition:transform .12s ease, border-color .12s ease;
+}
+.icon-btn:hover{ border-color:var(--rose-line); transform:translateY(-1px) }
+@media (max-width:620px){ .tools{ position:static; justify-content:center; margin-top:8px } .icon-btn{ width:40px; height:40px } }
+
+/* ==========================================================================
+   3. 그림판 — 꽃 그림 위에 조각(타일)이 덮여 있다
+   ========================================================================== */
+.stage{ margin-top:clamp(10px,1.6vw,18px); display:flex; justify-content:center }
+.frame{
+  position:relative; width:fit-content; max-width:96%;
+  background:var(--card); border:2.6px solid var(--line); border-radius:var(--hand-radius);
+  padding:clamp(8px,1vw,12px); box-shadow:0 12px 28px rgba(99,74,56,.11);
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+.frame.solved{ border-color:var(--rose-line); box-shadow:0 18px 34px rgba(184,76,103,.22) }
+.board{
+  position:relative; width:var(--board); height:var(--board);
+  border-radius:16px; overflow:hidden; background:#FFFFFF;
+}
+.board img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block }
+/* 퍼즐 조각 — SVG 로 그린 직소 모양. 볼록·오목이 이웃 조각과 정확히 맞물린다 */
+.tiles{ position:absolute; inset:0; width:100%; height:100%; display:block; overflow:visible }
+.tile{ cursor:pointer; transform-box:fill-box; transform-origin:center;
+  transition:transform .36s cubic-bezier(.3,.1,.3,1), opacity .30s ease; }
+.tile path{
+  fill:var(--tile); stroke:var(--tile-edge); stroke-width:1.6px; vector-effect:non-scaling-stroke;
+  stroke-linejoin:round; transition:fill .12s ease;
+}
+.tile text{
+  fill:var(--tile-ink); font-family:var(--font-disp); font-weight:700;
+  text-anchor:middle; dominant-baseline:central; pointer-events:none; user-select:none;
+}
+.tile:hover path{ fill:#FFE9EF }
+:root[data-theme="dark"] .tile:hover path{ fill:#4A3D57 }
+.tile.open{ opacity:0; transform:scale(.4) rotate(16deg); pointer-events:none }
+
+/* ==========================================================================
+   4. 조작
+   ========================================================================== */
+.controls{ margin-top:clamp(10px,1.5vw,16px); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:9px 10px }
+.btn{
+  border:none; border-radius:999px; cursor:pointer; font-family:var(--font-disp); font-weight:700;
+  padding:clamp(10px,1.3vw,15px) clamp(16px,2vw,26px); font-size:clamp(.98rem,1.6vw,1.3rem); letter-spacing:.04em;
+  transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.btn-main{ background:linear-gradient(180deg,var(--rose) 0%,var(--rose-deep) 100%); color:#fff;
+  box-shadow:0 10px 22px rgba(204,92,119,.30); min-width:min(240px,60vw) }
+.btn-sub{ background:var(--card); color:var(--ink); border:1.8px solid var(--line) }
+.btn:hover:not(:disabled){ transform:translateY(-2px) }
+.btn:active:not(:disabled){ transform:translateY(1px) scale(.99) }
+.btn:disabled{ filter:grayscale(.3) opacity(.55); cursor:default; box-shadow:none }
+.btn:focus-visible, .icon-btn:focus-visible, .seg button:focus-visible{ outline:3px solid rgba(204,92,119,.45); outline-offset:3px }
+.seg{ display:inline-flex; background:var(--card); border:1.6px solid var(--line); border-radius:999px; padding:4px; gap:4px }
+.seg .lbl{ align-self:center; padding:0 6px 0 10px; font-size:.86rem; color:var(--ink-soft) }
+.seg button{ border:none; background:transparent; cursor:pointer; font-family:inherit; font-size:.9rem; color:var(--ink-soft);
+  padding:7px 14px; border-radius:999px }
+.seg button[aria-pressed="true"]{ background:rgba(244,175,193,.55); color:var(--ink); font-weight:700 }
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{ background:rgba(196,84,111,.5) }
+
+/* ==========================================================================
+   5. 문제 · 정답 띠
+   ========================================================================== */
+.answer{
+  margin-top:clamp(10px,1.4vw,16px); min-height:clamp(68px,7.2vh,100px);
+  display:flex; align-items:center; justify-content:center; gap:4px 18px; flex-wrap:wrap;
+  background:var(--card); border:2.2px solid var(--line); border-radius:var(--hand-radius);
+  padding:10px 18px; text-align:center; box-shadow:0 10px 24px rgba(99,74,56,.08);
+}
+.answer .q{ font-family:var(--font-disp); font-weight:700; font-size:clamp(1.3rem,min(3vw,4.2vh),2.3rem); letter-spacing:.03em }
+.answer .q.shout{ background:linear-gradient(transparent 64%, rgba(244,175,193,.9) 64% 92%, transparent 92%); padding:0 .16em }
+:root[data-theme="dark"] .answer .q.shout{ background:linear-gradient(transparent 64%, rgba(196,84,111,.62) 64% 92%, transparent 92%) }
+.answer .hint{ font-family:var(--font-disp); font-weight:700; color:var(--rose-deep);
+  font-size:clamp(1.1rem,min(2.4vw,3.4vh),1.8rem); letter-spacing:.22em }
+:root[data-theme="dark"] .answer .hint{ color:var(--rose-line) }
+.answer .meta{ font-size:clamp(.82rem,1.2vw,.98rem); color:var(--ink-soft) }
+@keyframes riseIn{ from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:none} }
+.answer .show{ animation:riseIn .32s ease-out both }
+
+.history{ margin-top:10px; display:flex; flex-wrap:wrap; gap:7px; align-items:center; justify-content:center; min-height:34px }
+.history .cap{ font-size:.84rem; color:var(--ink-soft) }
+.chip{ font-family:var(--font-disp); font-weight:700; font-size:.9rem; padding:5px 12px; border-radius:999px;
+  background:var(--card); border:1.5px solid var(--line); color:var(--ink-soft) }
+.foot{ margin-top:12px; text-align:center; font-size:.82rem; color:var(--ink-soft); line-height:1.9 }
+.foot kbd{ font-family:var(--font-body); font-size:.78rem; background:var(--card); border:1.3px solid var(--line);
+  border-bottom-width:2.4px; border-radius:7px; padding:2px 7px; color:var(--ink) }
+
+.petal-layer{ position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden }
+.petal{ position:absolute; width:16px; height:20px; border-radius:60% 60% 54% 54%; will-change:transform,opacity }
+@keyframes petalFall{ 0%{opacity:0; transform:translate3d(0,0,0) rotate(0)} 12%{opacity:1}
+  100%{opacity:0; transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot))} }
+
+@media (max-height:840px){ :root{ --over: 400px } .foot{ display:none } }
+@media (max-height:680px){ :root{ --over: 390px } }
+@media (max-width:620px){ :root{ --over: 542px } }
+@media (max-width:620px) and (min-height:841px){ :root{ --over: 596px } }
+@media (prefers-reduced-motion: reduce){ .tile{ transition-duration:.01s } .answer .show{ animation:none } }
+</style>
+</head>
+<body>
+
+<div class="petal-layer" id="petalLayer" aria-hidden="true"></div>
+
+<main class="page">
+  <header class="site-head">
+    <img class="bi" src="logo.png" width="880" height="365" alt="오늘의 꽃">
+    <div><h1>오늘의 꽃 조각 맞히기</h1></div>
+    <div class="tools">
+      <button class="icon-btn" id="themeBtn" type="button" aria-pressed="false" aria-label="나이트 모드 켜기">🌙</button>
+      <button class="icon-btn" id="muteBtn" type="button" aria-pressed="false" aria-label="소리 끄기">🔊</button>
+      <button class="icon-btn" id="fullBtn" type="button" aria-label="전체화면">⛶</button>
+    </div>
+  </header>
+
+  <section class="stage">
+    <div class="frame" id="frame">
+      <div class="board" id="board">
+        <img id="pic" alt="" decoding="sync">
+        <svg class="tiles" id="tiles" viewBox="0 0 100 100" preserveAspectRatio="none" role="group" aria-label="가려진 퍼즐 조각들. 누르면 열립니다"></svg>
+      </div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button class="btn btn-main" id="openBtn" type="button">한 칸 열기</button>
+    <button class="btn btn-sub" id="hintBtn" type="button">힌트</button>
+    <button class="btn btn-sub" id="revealBtn" type="button">정답 공개</button>
+    <button class="btn btn-sub" id="nextBtn" type="button">다음 문제</button>
+    <div class="seg" role="group" aria-label="조각 수">
+      <span class="lbl">조각</span>
+      <button type="button" data-n="3" aria-pressed="false">9칸</button>
+      <button type="button" data-n="4" aria-pressed="true">16칸</button>
+      <button type="button" data-n="5" aria-pressed="false">25칸</button>
+    </div>
+  </div>
+
+  <section class="answer" id="answer" aria-live="polite" aria-atomic="true"></section>
+  <div class="history" id="history"></div>
+
+  <p class="foot">
+    <kbd>스페이스</kbd> 한 칸 열기 · <kbd>H</kbd> 힌트 · <kbd>Enter</kbd> 정답 공개 → 다음 문제 ·
+    <kbd>M</kbd> 소리 · <kbd>N</kbd> 나이트 · <kbd>F</kbd> 전체화면 &nbsp;|&nbsp; 조각을 직접 눌러도 열립니다
+  </p>
+</main>
+
+<script src="flowers.js"></script>
+<script>
+'use strict';
+/* ==========================================================================
+   오늘의 꽃 조각 맞히기
+   가려진 꽃 그림을 한 칸씩 열고, 시청자가 채팅으로 꽃 이름을 맞힌다.
+   · 문제 순서와 조각 여는 순서는 브라우저의 암호학적 난수로 섞는다
+   · 한 바퀴(전체 꽃)를 다 낼 때까지 같은 꽃이 다시 나오지 않는다
+   ========================================================================== */
+var FLOWERS = (window.FLOWERS || []).slice();
+var LS = { mute:'todayFlowerGuess.muted.v1', theme:'todayFlowerGuess.theme.v1', n:'todayFlowerGuess.n.v1' };
+var MAX_CHIPS = 6;
+
+var picEl = document.getElementById('pic'), tilesEl = document.getElementById('tiles'), frameEl = document.getElementById('frame');
+var openBtn = document.getElementById('openBtn'), hintBtn = document.getElementById('hintBtn');
+var revealBtn = document.getElementById('revealBtn'), nextBtn = document.getElementById('nextBtn');
+var answerEl = document.getElementById('answer'), historyEl = document.getElementById('history');
+var themeBtn = document.getElementById('themeBtn'), muteBtn = document.getElementById('muteBtn'), fullBtn = document.getElementById('fullBtn');
+var segBtns = document.querySelectorAll('.seg button');
+var petalLayer = document.getElementById('petalLayer');
+
+var N = 4;                 /* 한 변의 조각 수 */
+var deck = [], deckPos = 0;/* 섞은 문제 순서 */
+var cur = null;            /* 지금 문제 {f, n} */
+var order = [];            /* 아직 안 연 조각을 섞어 둔 순서 */
+var opened = 0, revealed = false, hintLevel = 0, qNo = 0;
+var revealedAt = 0;          /* 정답을 공개한 시각 — 공개 직후 실수로 넘어가는 것을 막는다 */
+var NEXT_LOCK = 800;         /* 공개 뒤 이 시간(ms) 동안은 다음 문제로 못 넘어간다 */
+var past = [];
+var muted = false, night = false;
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ---------- 균등 난수 ---------- */
+var CRYPTO = (window.crypto && window.crypto.getRandomValues) ? window.crypto : null;
+function randInt(n){                       /* 0 .. n-1, 치우침 없이 */
+  if (CRYPTO){
+    var buf = new Uint32Array(1), limit = Math.floor(4294967296 / n) * n;
+    for (var g = 0; g < 64; g++){ CRYPTO.getRandomValues(buf); if (buf[0] < limit) return buf[0] % n; }
+  }
+  return Math.floor(Math.random() * n);
+}
+function shuffled(n){
+  var a = []; for (var i = 0; i < n; i++) a.push(i);
+  for (var j = n - 1; j > 0; j--){ var k = randInt(j + 1); var t = a[j]; a[j] = a[k]; a[k] = t; }
+  return a;
+}
+
+/* 조각 여는 순서 — 무작위이되 가운데 칸이 먼저, 모서리(흰 배경뿐인 칸)는 뒤로 간다.
+   '가운데까지 거리 + 무작위 값'으로 줄을 세워서, 순서가 매번 달라지면서도 헛칸이 앞에 오지 않는다 */
+function centerFirst(n){
+  var c = (n - 1) / 2, maxD = Math.sqrt(2) * c || 1, arr = [];
+  for (var i = 0; i < n * n; i++){
+    var dx = (i % n) - c, dy = Math.floor(i / n) - c;
+    arr.push({ i:i, k: Math.sqrt(dx * dx + dy * dy) / maxD + randInt(1000) / 1000 * 0.55 });
+  }
+  arr.sort(function(a, b){ return a.k - b.k; });
+  return arr.map(function(o){ return o.i; });
+}
+
+/* ---------- 초성 힌트 ---------- */
+var CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+function chosung(s){
+  var out = '';
+  for (var i = 0; i < s.length; i++){
+    var c = s.charCodeAt(i);
+    if (c >= 0xAC00 && c <= 0xD7A3) out += CHO[Math.floor((c - 0xAC00) / 588)];
+    else out += s.charAt(i);
+  }
+  return out;
+}
+function blanks(s){ return s.replace(/[^\s]/g, '○'); }
+
+/* ---------- 소리 ---------- */
+var AC = window.AudioContext || window.webkitAudioContext || null, actx = null, master = null;
+function ensureAudio(){
+  if (!AC) return;
+  if (!actx){
+    try{ actx = new AC(); master = actx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(actx.destination); }
+    catch(e){ actx = null; return; }
+  }
+  if (actx.state !== 'running'){ actx.resume().catch(function(){}); }
+}
+function tone(freq, t, vol, dur, glideTo){
+  if (!actx || actx.state !== 'running') return;
+  var o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(freq, t);
+  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur * 0.8);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+}
+function sndOpen(){ if (actx) tone(1320, actx.currentTime, 0.11, 0.10, 760); }
+function sndHint(){ if (actx){ var t = actx.currentTime; tone(880, t, 0.10, 0.16); tone(1174.66, t + 0.09, 0.10, 0.2); } }
+function sndReveal(){
+  if (!actx) return; var t = actx.currentTime + 0.02, s = [523.25,659.26,783.99,1046.5,1318.51];
+  for (var i = 0; i < s.length; i++) tone(s[i], t + i * 0.09, 0.2, 0.6);
+  tone(1046.5, t + 0.5, 0.14, 1.3); tone(1567.98, t + 0.51, 0.12, 1.3);
+}
+
+/* ==========================================================================
+   문제 내기
+   ========================================================================== */
+/* 직소 조각의 한 변 — A 에서 B 로 가는 선 가운데에 혹(볼록)을 하나 만든다.
+   sign 이 +1 이면 진행 방향의 오른쪽으로, -1 이면 왼쪽으로 튀어나온다. 0 이면 곧은 선(판 가장자리).
+   rev 가 true 면 같은 모양을 B→A 방향으로 그린다 — 이웃 조각이 정확히 같은 선을 반대로 지나가야 틈이 없다 */
+function edgePath(ax, ay, bx, by, sign, rev){
+  function P(t, d){                                   /* t: 변을 따라 0~1, d: 변에서 떨어진 거리(변 길이 기준) */
+    var x = ax + (bx - ax) * t, y = ay + (by - ay) * t;
+    var nx = -(by - ay), ny = (bx - ax);              /* 진행 방향의 오른쪽 */
+    return (x + nx * d * sign).toFixed(3) + ' ' + (y + ny * d * sign).toFixed(3);
+  }
+  if (!sign) return rev ? 'L' + P(0, 0) : 'L' + P(1, 0);
+  /* 목이 잘록하고 머리가 둥근 혹: 0.40 에서 올라가 0.50 꼭대기, 0.60 으로 내려온다 */
+  if (!rev) return 'L' + P(.40, 0) + 'C' + P(.46, 0) + ',' + P(.30, .28) + ',' + P(.50, .28) +
+                   'C' + P(.70, .28) + ',' + P(.54, 0) + ',' + P(.60, 0) + 'L' + P(1, 0);
+  return 'L' + P(.60, 0) + 'C' + P(.54, 0) + ',' + P(.70, .28) + ',' + P(.50, .28) +
+         'C' + P(.30, .28) + ',' + P(.46, 0) + ',' + P(.40, 0) + 'L' + P(0, 0);
+}
+var SVGNS = 'http://www.w3.org/2000/svg';
+function buildTiles(){
+  var c = 100 / N, r, col, i;
+  /* 안쪽 변마다 볼록 방향을 무작위로 정한다. H[r][col]: r번 가로줄 아래 변, V[r][col]: col번 세로줄 오른쪽 변 */
+  var H = [], V = [];
+  for (r = 0; r < N; r++){ H.push([]); V.push([]); for (col = 0; col < N; col++){ H[r].push(randInt(2) ? 1 : -1); V[r].push(randInt(2) ? 1 : -1); } }
+  while (tilesEl.firstChild) tilesEl.removeChild(tilesEl.firstChild);
+  document.documentElement.style.setProperty('--n', N);
+  for (i = 0; i < N * N; i++){
+    r = Math.floor(i / N); col = i % N;
+    var x0 = col * c, y0 = r * c, x1 = x0 + c, y1 = y0 + c;
+    var d = 'M' + x0.toFixed(3) + ' ' + y0.toFixed(3) +
+      /* 윗변: 왼→오. 위 조각의 아랫변(H[r-1])을 같은 방향으로 지난다 */
+      edgePath(x0, y0, x1, y0, r > 0 ? H[r - 1][col] : 0, false) +
+      /* 오른변: 위→아래 */
+      edgePath(x1, y0, x1, y1, col < N - 1 ? V[r][col] : 0, false) +
+      /* 아랫변: 오→왼. 변의 기준 방향(왼→오)을 거꾸로 지난다 */
+      edgePath(x0, y1, x1, y1, r < N - 1 ? H[r][col] : 0, true) +
+      /* 왼변: 아래→위. 왼쪽 조각의 오른변(V[r][col-1], 위→아래)을 거꾸로 지난다 */
+      edgePath(x0, y0, x0, y1, col > 0 ? V[r][col - 1] : 0, true) + 'Z';
+    var g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'tile'); g.setAttribute('data-i', i);
+    var p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', d);
+    var t = document.createElementNS(SVGNS, 'text');
+    t.setAttribute('x', (x0 + c / 2).toFixed(3)); t.setAttribute('y', (y0 + c / 2).toFixed(3));
+    t.setAttribute('font-size', (c * 0.30).toFixed(2));
+    t.textContent = (i + 1);
+    var ttl = document.createElementNS(SVGNS, 'title'); ttl.textContent = (i + 1) + '번 조각 열기';
+    g.appendChild(ttl); g.appendChild(p); g.appendChild(t);
+    tilesEl.appendChild(g);
+  }
+  order = centerFirst(N);
+  opened = 0;
+}
+function nextFlower(){
+  if (!FLOWERS.length) return null;
+  if (deckPos >= deck.length){
+    var last = cur ? FLOWERS.indexOf(cur) : -1;
+    deck = shuffled(FLOWERS.length); deckPos = 0;
+    /* 새 바퀴의 첫 문제가 방금 낸 꽃과 같지 않게 한다 */
+    if (deck.length > 1 && deck[0] === last){ var t = deck[0]; deck[0] = deck[1]; deck[1] = t; }
+  }
+  return FLOWERS[deck[deckPos++]];
+}
+function preload(f){ if (f){ var im = new Image(); im.src = 'images/' + f.f; } }
+function newQuestion(){
+  /* 정답이 뜨자마자 Enter 가 한 번 더 눌려(또는 길게 눌려) 정답이 사라지는 사고를 막는다 */
+  if (revealed && (performance.now() - revealedAt) < NEXT_LOCK) return;
+  cur = nextFlower();
+  if (!cur){ answerEl.innerHTML = '<p class="q">꽃 목록(flowers.js)을 불러오지 못했습니다.</p>'; return; }
+  qNo++; revealed = false; hintLevel = 0;
+  frameEl.classList.remove('solved');
+  buildTiles();                                   /* 먼저 가린 뒤에 그림을 바꾼다 — 답이 비치지 않게 */
+  /* src 만 바꾸면 새 파일이 다 받아질 때까지 이전 꽃이 그대로 그려진다.
+     그 사이에 칸을 열면 직전 문제의 꽃이 보이므로, 다 받아질 때까지 그림을 숨긴다 */
+  var want = 'images/' + cur.f;
+  picEl.style.visibility = 'hidden';
+  picEl.onload = picEl.onerror = function(){ if (picEl.getAttribute('src') === want) picEl.style.visibility = ''; };
+  picEl.src = want;
+  if (deckPos < deck.length) preload(FLOWERS[deck[deckPos]]);
+  render();
+}
+function openTile(i){
+  if (revealed) return;
+  var b = tilesEl.children[i];
+  if (!b || b.classList.contains('open')) return;
+  ensureAudio();
+  b.classList.add('open'); b.setAttribute('aria-hidden', 'true');
+  var k = order.indexOf(i); if (k >= 0) order.splice(k, 1);
+  opened++;
+  sndOpen();
+  render();
+}
+function openRandom(){
+  if (revealed || !order.length) return;
+  openTile(order[0]);
+}
+function giveHint(){
+  if (revealed || !cur || hintLevel >= 2) return;
+  ensureAudio(); hintLevel++; sndHint(); render();
+}
+function reveal(){
+  if (revealed || !cur) return;
+  ensureAudio();
+  revealed = true;
+  for (var i = 0; i < tilesEl.children.length; i++){
+    var b = tilesEl.children[i];
+    b.style.transitionDelay = (b.classList.contains('open') ? 0 : Math.min(i * 14, 260)) + 'ms';
+    b.classList.add('open'); b.setAttribute('aria-hidden', 'true');
+  }
+  order = [];
+  frameEl.classList.add('solved');
+  past.push(cur.n); if (past.length > MAX_CHIPS) past = past.slice(-MAX_CHIPS);
+  revealedAt = performance.now();
+  sndReveal(); burstPetals(); render();
+}
+
+/* ==========================================================================
+   화면 갱신
+   ========================================================================== */
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function render(){
+  var total = N * N, html;
+  if (!cur) return;
+  if (revealed){
+    html = '<div class="show"><span class="q shout">정답은 ' + esc(cur.n) + '!</span></div>' +
+           '<span class="meta">' + qNo + '번째 문제 · ' + opened + '칸 열고 공개</span>';
+  } else {
+    html = '<span class="q">무슨 꽃일까요?</span>';
+    if (hintLevel === 1) html += '<span class="hint">' + esc(blanks(cur.n)) + '</span>';
+    if (hintLevel === 2) html += '<span class="hint">' + esc(chosung(cur.n)) + '</span>';
+    html += '<span class="meta">' + qNo + '번째 문제 · ' + opened + ' / ' + total + '칸 열림</span>';
+  }
+  answerEl.innerHTML = html;
+  openBtn.disabled = revealed || !order.length;
+  hintBtn.disabled = revealed || hintLevel >= 2;
+  hintBtn.textContent = hintLevel === 0 ? '힌트 (글자 수)' : (hintLevel === 1 ? '힌트 (초성)' : '힌트 끝');
+  revealBtn.disabled = revealed;
+  historyEl.innerHTML = '';
+  if (past.length){
+    var cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = '지난 정답'; historyEl.appendChild(cap);
+    for (var i = 0; i < past.length; i++){ var c = document.createElement('span'); c.className = 'chip'; c.textContent = past[i]; historyEl.appendChild(c); }
+  }
+}
+function setN(n, save){
+  N = n; if (save) lsSet(LS.n, String(n));
+  for (var i = 0; i < segBtns.length; i++) segBtns[i].setAttribute('aria-pressed', String(+segBtns[i].getAttribute('data-n') === N));
+}
+
+/* ---------- 꽃잎 ---------- */
+var PETALS = ['#F8D3DC','#FBE0E7','#F7C9D5','#FDECEF'];
+function burstPetals(){
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var box = frameEl.getBoundingClientRect(), cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+  for (var i = 0; i < 12; i++){
+    (function(k){
+      var el = document.createElement('span'); el.className = 'petal';
+      var ang = (-150 + (300 / 11) * k) * Math.PI / 180, dist = 150 + (k % 3) * 60, life = 1100 + k * 90;
+      el.style.left = (cx - 8) + 'px'; el.style.top = (cy - 10) + 'px'; el.style.background = PETALS[k % PETALS.length];
+      el.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
+      el.style.setProperty('--dy', Math.round(Math.abs(Math.sin(ang)) * dist * 0.5 + 190) + 'px');
+      el.style.setProperty('--rot', (k % 2 ? 1 : -1) * (160 + k * 22) + 'deg');
+      el.style.animation = 'petalFall ' + life + 'ms ease-out forwards';
+      function drop(){ if (el.parentNode) el.parentNode.removeChild(el); }
+      el.addEventListener('animationend', drop); setTimeout(drop, life + 1200);
+      petalLayer.appendChild(el);
+    })(i);
+  }
+}
+
+/* ---------- 테마 · 소리 · 전체화면 ---------- */
+function applyTheme(){
+  if (night) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
+  themeBtn.textContent = night ? '☀️' : '🌙';
+  themeBtn.setAttribute('aria-pressed', String(night));
+  themeBtn.setAttribute('aria-label', night ? '라이트 모드 켜기' : '나이트 모드 켜기');
+  var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', night ? '#221C28' : '#F6EEDF');
+}
+function toggleTheme(){ night = !night; lsSet(LS.theme, night ? 'dark' : 'light'); applyTheme(); }
+function syncMute(){ muteBtn.textContent = muted ? '🔇' : '🔊'; muteBtn.setAttribute('aria-pressed', String(muted)); muteBtn.setAttribute('aria-label', muted ? '소리 켜기' : '소리 끄기'); }
+function toggleMute(){ muted = !muted; lsSet(LS.mute, muted ? '1' : '0'); syncMute(); ensureAudio(); if (actx && master) master.gain.setTargetAtTime(muted ? 0 : 0.9, actx.currentTime, 0.015); }
+function toggleFull(){ try{ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }catch(e){} }
+
+/* ---------- 조작 ---------- */
+openBtn.addEventListener('click', openRandom);
+hintBtn.addEventListener('click', giveHint);
+revealBtn.addEventListener('click', reveal);
+nextBtn.addEventListener('click', function(){ ensureAudio(); newQuestion(); });
+themeBtn.addEventListener('click', toggleTheme);
+muteBtn.addEventListener('click', toggleMute);
+fullBtn.addEventListener('click', toggleFull);
+tilesEl.addEventListener('click', function(e){
+  var b = e.target && e.target.closest ? e.target.closest('.tile') : null;
+  if (b) openTile(+b.getAttribute('data-i'));
+});
+for (var si = 0; si < segBtns.length; si++){
+  segBtns[si].addEventListener('click', function(){
+    /* 조각 수를 바꾸면 지금 문제를 같은 꽃으로 다시 가린다(열어 둔 칸은 처음부터) */
+    setN(+this.getAttribute('data-n'), true);
+    if (cur && !revealed){ buildTiles(); render(); }
+  });
+}
+/* 마우스로 누른 버튼에 키보드 초점이 남으면, 그 뒤 스페이스·Enter 가 게임 동작 대신 그 버튼을 다시 누른다
+   (힌트가 한 단계 더 나가거나, 문제가 통째로 넘어가거나, 키가 먹통이 된다). 그래서
+   (1) 마우스로 눌러도 초점이 남지 않게 하고 (2) 스페이스·Enter 는 초점이 어디 있든 게임 동작으로 처리한다. */
+document.addEventListener('mousedown', function(e){
+  if (e.target && e.target.closest && e.target.closest('button')) e.preventDefault();
+});
+document.addEventListener('click', function(e){
+  var b = e.target && e.target.closest ? e.target.closest('button') : null;
+  if (b && e.detail > 0 && b.blur) b.blur();           /* e.detail > 0 = 진짜 마우스·터치 클릭 */
+});
+function dropFocus(){
+  var a = document.activeElement;
+  if (a && a !== document.body && a.blur) a.blur();    /* 스페이스는 키를 뗄 때 버튼이 눌리므로 미리 초점을 뗀다 */
+}
+document.addEventListener('keydown', function(e){
+  var k = e.key, isGo = (k === ' ' || k === 'Spacebar' || k === 'Enter');
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  /* Tab 으로 위쪽 아이콘·조각 수 버튼에 가 있을 때만 그 버튼에 양보한다(키보드만 쓰는 사람용) */
+  var onTool = e.target && e.target.closest && e.target.closest('.icon-btn, .seg button, a');
+  if (e.repeat){ if (isGo && !onTool) e.preventDefault(); return; }   /* 길게 눌러도 버튼이 연달아 눌리지 않게 */
+  if (k === ' ' || k === 'Spacebar'){
+    if (onTool) return;
+    e.preventDefault(); dropFocus(); openRandom();
+  } else if (k === 'Enter'){
+    if (onTool) return;
+    e.preventDefault(); dropFocus(); if (revealed) newQuestion(); else reveal();
+  } else if (k === 'h' || k === 'H' || k === 'ㅗ'){ e.preventDefault(); giveHint(); }
+  else if (k === 'ArrowRight'){ e.preventDefault(); newQuestion(); }
+  else if (k === 'm' || k === 'M' || k === 'ㅡ'){ e.preventDefault(); toggleMute(); }
+  else if (k === 'n' || k === 'N' || k === 'ㅜ'){ e.preventDefault(); toggleTheme(); }
+  else if (k === 'f' || k === 'F' || k === 'ㄹ'){ e.preventDefault(); toggleFull(); }
+});
+
+/* ---------- 시작 ---------- */
+muted = lsGet(LS.mute) === '1';
+night = lsGet(LS.theme) === 'dark';
+var savedN = +lsGet(LS.n); setN(savedN === 3 || savedN === 4 || savedN === 5 ? savedN : 4, false);
+applyTheme(); syncMute();
+newQuestion();
+</script>
+</body>
+</html>
